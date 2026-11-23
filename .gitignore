@@ -1,0 +1,12 @@
+cache/
+out/
+.env
+foundry.lock
+*.lock
+
+# Local forge broadcast output. The published Fuji records stay tracked.
+broadcast/**
+!broadcast/
+!broadcast/Deploy.s.sol/
+!broadcast/Deploy.s.sol/43113/
+!broadcast/Deploy.s.sol/43113/*.json
