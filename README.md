@@ -8,6 +8,62 @@ The MIT license in `LICENSE` applies to this repository.
 
 `MockUSDC` is a Fuji testnet faucet. Do not deploy it on Avalanche mainnet.
 
+## Demo
+
+The walkthrough is [fuji.operatoruplift.com](https://fuji.operatoruplift.com). The homepage links **Open the Fuji commitment demo** when the public contract addresses are configured. That link opens [/app/fuji](https://fuji.operatoruplift.com/app/fuji). The Solana site at operatoruplift.com does not show the link.
+
+On that screen:
+
+1. Get test AVAX for gas from the [Avalanche faucet](https://build.avax.network/console/primary-network/faucet) or the [Core faucet](https://core.app/tools/testnet-faucet/?subnet=c&token=c).
+2. Connect Core or MetaMask. The page switches the wallet to Avalanche Fuji, chain id `43113`. There is no separate account sign-in.
+3. Mint test USDC. The mint button calls the public `mint` on the test token below.
+4. Create a commitment deposit. The first wallet opens the pool. A second wallet joins the same pool by using the same goal name.
+5. Submit one photo. The server reviews it and, when the verifier key is set, records a passed day on-chain.
+6. After the deadline, settle, then claim. The screen defaults the deadline to a few minutes so a live walkthrough can finish.
+
+## Architecture
+
+This repository is the Foundry escrow. The browser app that calls it is the Operator Uplift website. `fuji.operatoruplift.com` is a branch domain on the Vercel project `website` (`prj_JjcNxnKQBrZ9l3zcAoA0RQArAdcB`), tracking `cursor/fuji-commitment-deposit-48e4` in `operatoruplift/WEBSITE`. The separate Vercel project `uplift-fuji` is another deployment of that same branch. It is not the host behind the custom domain.
+
+```
+Core or MetaMask (ethers v6)
+  openPool, createCommitment, settle, claim
+        |
+        +--> POST /api/uplift/fuji/proof
+               wallet signature over goal, day, challenge, photo
+               vision review (the same reviewer as daily proof)
+               keccak256 of the canonical verdict JSON
+               recordProof from the VERIFIER_ROLE key
+        |
+CommitmentEscrow on Fuji
+  stores the verdict hash
+  writes pull payments once, at settle
+```
+
+The browser does not send a pass bit. A failed or abstained review is not written, so that day stays open. Settlement can be called by anyone after the deadline and moves no tokens. `claim` pays the caller the amount `settle` already wrote. `claimTreasury` pays the immutable treasury, never the caller.
+
+The server records a proof only when all of these are set on the deployment. Names only:
+
+| Variable | Who reads it | What it is |
+| --- | --- | --- |
+| `NEXT_PUBLIC_FUJI_ESCROW_ADDRESS` | browser, inlined at build | escrow address |
+| `NEXT_PUBLIC_FUJI_USDC_ADDRESS` | browser, inlined at build | test USDC address |
+| `NEXT_PUBLIC_FUJI_CHAIN_ID` | browser, optional | `43113`, or `31337` for local Anvil |
+| `NEXT_PUBLIC_FUJI_RPC_URL` | browser, optional | public Fuji RPC when the chain id is `43113` |
+| `FUJI_ESCROW_ADDRESS` | server, each request | same escrow address |
+| `FUJI_RPC_URL` | server | Fuji RPC used to send `recordProof` |
+| `FUJI_VERIFIER_ADDRESS` | server | address that holds `VERIFIER_ROLE` |
+| `FUJI_VERIFIER_PRIVATE_KEY` | server only | key for that address. Never `NEXT_PUBLIC_` |
+| `ANTHROPIC_API_KEY` or `PROOF_VISION_API_KEY` | server | existing vision review |
+| `UPSTASH_REDIS_REST_URL` | server | existing paid-call budget |
+| `UPSTASH_REDIS_REST_TOKEN` | server | existing paid-call budget |
+
+`FUJI_VERIFIER_PRIVATE_KEY` must be the key for `0x47FEbfc801ccB311C8f1D245296a0F350b728C5A`, the address granted `VERIFIER_ROLE` in [DEPLOYMENTS.md](DEPLOYMENTS.md). Do not generate a replacement unless an admin grants `VERIFIER_ROLE` to the new address. A new key is created with `cast wallet new`. Keep the printed key in the host's secret store, not in git.
+
+Without the vision key, the proof route returns `enabled: false` and records nothing. Without Upstash, the review abstains. Without `FUJI_VERIFIER_PRIVATE_KEY`, a passed review returns `verifier_not_configured` and writes nothing. A preview deployment does not inherit production values, so the Fuji branch needs its own copies.
+
+`FUJI_VERIFIER_UNLOCKED` and `FUJI_LOCAL_FIXTURE` are local Anvil only. Both refuse a public RPC and a production process.
+
 ## Design
 
 `openPool(goalId, deadline, requiredProofDays)` creates a pool. The first caller fixes two terms:
