@@ -17,3 +17,6 @@ jobs:
 
       - name: Run Forge tests
         run: forge test
+
+      - name: Run Anvil deploy rehearsal
+        run: script/anvil-e2e.sh

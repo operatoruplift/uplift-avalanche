@@ -5,9 +5,14 @@ out/
 foundry.lock
 *.lock
 
-# Local forge broadcast output. The published Fuji records stay tracked.
+# Local forge broadcast output. Published network records stay tracked.
 broadcast/**
 !broadcast/
 !broadcast/Deploy.s.sol/
 !broadcast/Deploy.s.sol/43113/
 !broadcast/Deploy.s.sol/43113/*.json
+!broadcast/Deploy.s.sol/97/
+!broadcast/Deploy.s.sol/97/*.json
+!broadcast/DeployBnb.s.sol/
+!broadcast/DeployBnb.s.sol/97/
+!broadcast/DeployBnb.s.sol/97/*.json

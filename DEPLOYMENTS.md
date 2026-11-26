@@ -1,15 +1,71 @@
-# Avalanche Fuji deploy results
+# Deployment records
 
-Deployed and verified on Fuji testnet (chain id 43113) on 23 Nov 2026, about 11:57 PM ICT (Asia/Saigon).
+Same contracts on two testnets. BNB Smart Chain testnet is the hackathon network. Avalanche Fuji is the earlier deployment and is already verified.
+
+Compiler for both: solc `v0.8.24+commit.e11b9ed9`, optimizer on, 200 runs.
+
+## BNB Smart Chain testnet (chain id 97)
+
+Status: pending a funded deployer key. This repository does not contain a key, and this checkout did not broadcast.
+
+A testnet-only deployer and verifier were prepared for this deployment. Their addresses, and the test BNB the deployer still needs, are in the deployment table in [docs/BNB_BANGKOK.md](docs/BNB_BANGKOK.md#deployments).
+
+RPC: `https://data-seed-prebsc-1-s1.bnbchain.org:8545`  
+Foundry alias: `bsc-testnet`  
+Explorer: https://testnet.bscscan.com
+
+When a funded key is available, export `BSC_TREASURY_ADDRESS`, `BSC_VERIFIER_ADDRESS`, and `BSC_DEPLOYER_PRIVATE_KEY`, then run:
+
+```sh
+forge script script/Deploy.s.sol:DeployBscTestnet \
+  --rpc-url bsc-testnet \
+  --broadcast \
+  --slow
+```
+
+`script/DeployBnb.s.sol:DeployBnb` is the other entry point for the same deployment. It takes `--rpc-url bsc_testnet` and uses the deployer as the treasury when `BSC_TREASURY_ADDRESS` is empty. Use one of the two.
+
+Either script prints `MockUSDC`, `CommitmentEscrow`, `admin`, `treasury`, and `verifier`. Record those here, commit the receipts from `broadcast/Deploy.s.sol/97/` or `broadcast/DeployBnb.s.sol/97/` (the gitignore already keeps both directories), and verify with the commands in the README. Fill in:
+
+### MockUSDC
+
+- Address: pending
+- Deploy tx: pending
+- BscScan: pending
+- Verified: pending
+
+### CommitmentEscrow
+
+- Address: pending
+- Deploy tx: pending
+- Constructor args: token = MockUSDC address, treasury = `BSC_TREASURY_ADDRESS` (the deployer when `DeployBnb` ran with it empty), admin = deployer
+- BscScan: pending
+- Verified: pending
+
+### Role grant
+
+- `grantRole(VERIFIER_ROLE, BSC_VERIFIER_ADDRESS)` is in both deploy scripts
+- Tx: pending
+
+After the broadcast, set these on the website host for https://binance.operatoruplift.com:
+
+- `NEXT_PUBLIC_BSC_ESCROW_ADDRESS`
+- `NEXT_PUBLIC_BSC_USDC_ADDRESS`
+- `NEXT_PUBLIC_BSC_CHAIN_ID=97`
+- `NEXT_PUBLIC_BSC_RPC_URL=https://data-seed-prebsc-1-s1.bnbchain.org:8545`
+- `BSC_ESCROW_ADDRESS` (same escrow address, server side)
+- `BSC_RPC_URL`
+- `BSC_VERIFIER_ADDRESS`
+- `BSC_VERIFIER_PRIVATE_KEY` (server only, never `NEXT_PUBLIC_`)
+
+## Avalanche Fuji (chain id 43113)
+
+Deployed and verified on Fuji testnet on 23 Nov 2026, about 11:57 PM ICT (Asia/Saigon).
 
 RPC: `https://api.avax-test.network/ext/bc/C/rpc`
 
 Deployer / treasury / admin: `0x6707fA33c6aF7F10AD229239C466b72322c9F435`  
 Verifier (granted `VERIFIER_ROLE`): `0x47FEbfc801ccB311C8f1D245296a0F350b728C5A`
-
-Compiler: solc `v0.8.24+commit.e11b9ed9`, optimizer on, 200 runs.
-
-## Contracts
 
 ### MockUSDC
 
@@ -34,9 +90,9 @@ Compiler: solc `v0.8.24+commit.e11b9ed9`, optimizer on, 200 runs.
 - Tx: `0x3be90c13dbdc18ae02a2d4f2df0cee522d4732afff18a1bf52c6c3b0e6059e9f`
 - Block: 61527713
 
-## Smoke test
+### Smoke test
 
-Ran on Fuji right after deploy, about 11:58 PM–12:01 AM ICT (Asia/Saigon). Goal id `keccak256("fuji-smoke-2026-11-23")` = `0xca5867083fdd6b4753ba32e3226671edfc478f34c1bca74b75a5f9b61c038e72`. Pool: 1 proof day, deadline unix `1795453294`, deposit 1,000,000 units (1 test USDC, 6 decimals). Verdict hash `keccak256("fuji-smoke-passed")`, day 0, passed.
+Ran on Fuji right after deploy, about 11:58 PM to 12:01 AM ICT (Asia/Saigon). Goal id `keccak256("fuji-smoke-2026-11-23")` = `0xca5867083fdd6b4753ba32e3226671edfc478f34c1bca74b75a5f9b61c038e72`. Pool: 1 proof day, deadline unix `1795453294`, deposit 1,000,000 units (1 test USDC, 6 decimals). Verdict hash `keccak256("fuji-smoke-passed")`, day 0, passed.
 
 | Step | Tx hash | Result |
 | --- | --- | --- |

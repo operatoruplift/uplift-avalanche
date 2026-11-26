@@ -15,18 +15,27 @@ remappings = [
 
 [rpc_endpoints]
 fuji = "https://api.avax-test.network/ext/bc/C/rpc"
-anvil = "http://127.0.0.1:8545"
-# BNB Smart Chain testnet. Chain id 97. Explorer: https://testnet.bscscan.com
+# BNB Smart Chain testnet, chain id 97. Explorer: https://testnet.bscscan.com
+# The hyphenated name matches Foundry's chain alias (`--chain bsc-testnet`).
+bsc-testnet = "https://data-seed-prebsc-1-s1.bnbchain.org:8545"
+# The same network through a second public BNB Chain endpoint. `--rpc-url`
+# accepts either spelling. `--chain` accepts only `bsc-testnet` or `97`.
 bsc_testnet = "https://bsc-testnet-dataseed.bnbchain.org"
-# opBNB testnet. Chain id 5611. Explorer: https://opbnb-testnet.bscscan.com
-# Optional second network. The hackathon deployment target is bsc_testnet.
+# opBNB testnet, chain id 5611. Explorer: https://opbnb-testnet.bscscan.com
+# Optional second network. The hackathon deployment target is BSC testnet.
 opbnb_testnet = "https://opbnb-testnet-rpc.bnbchain.org"
+anvil = "http://127.0.0.1:8545"
 
-# Routescan serves the Snowtrace Fuji verifier. The key is read from the
-# environment at verify time. Do not put a real key in this file.
-# BSC and opBNB use Etherscan API V2. One etherscan.io key covers BscScan.
-# BSCSCAN_API_KEY is read from the environment. Do not put a real key here.
+# Keys are read from the environment at verify time. Do not put a real key
+# in this file.
+#
+# Fuji uses the Routescan Snowtrace verifier.
+# BSC testnet and opBNB testnet use Etherscan API v2 (the API behind BscScan).
+# One etherscan.io key in BSCSCAN_API_KEY covers both. Chain 97 is listed by
+# Etherscan as a paid-tier chain. Sourcify is the no-key fallback documented
+# in the README. The entries are named after Foundry's chain aliases, so
+# `--chain bsc-testnet` and `--chain opbnb-testnet` resolve them.
 [etherscan]
 fuji = { key = "${SNOWTRACE_API_KEY}", url = "https://api.routescan.io/v2/network/testnet/evm/43113/etherscan/api", chain = 43113 }
-bsc_testnet = { key = "${BSCSCAN_API_KEY}", url = "https://api.etherscan.io/v2/api?chainid=97", chain = 97 }
-opbnb_testnet = { key = "${BSCSCAN_API_KEY}", url = "https://api.etherscan.io/v2/api?chainid=5611", chain = 5611 }
+bsc-testnet = { key = "${BSCSCAN_API_KEY}", url = "https://api.etherscan.io/v2/api?chainid=97", chain = 97 }
+opbnb-testnet = { key = "${BSCSCAN_API_KEY}", url = "https://api.etherscan.io/v2/api?chainid=5611", chain = 5611 }

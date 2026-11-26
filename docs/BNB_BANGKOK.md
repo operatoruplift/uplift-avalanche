@@ -18,8 +18,11 @@ The hackathon asks for work built on BNB Chain, and for a clear line between tha
 | Settlement rules (finisher refund, 96/4 split, pull payments) | Yes. Covered by `forge test`. | Unchanged. |
 | Avalanche Fuji deployment and Snowtrace verification | Yes. Addresses in [DEPLOYMENTS.md](../DEPLOYMENTS.md). | Left in place. `foundry.toml` Fuji RPC and Routescan verifier are untouched. |
 | Photo-proof AI verifier (vision review, verdict hash, `recordProof`) | Yes. The app is the Operator Uplift website at [fuji.operatoruplift.com](https://fuji.operatoruplift.com). This repo does not contain that app. | No new model and no new website in this change. The same verifier can target BSC once it is pointed at the addresses below. |
-| BSC testnet RPC, Etherscan V2 verify entry, opBNB testnet RPC | No. | `foundry.toml` aliases `bsc_testnet` and `opbnb_testnet`. |
+| BSC testnet RPC, Etherscan V2 verify entry, opBNB testnet RPC | No. | `foundry.toml` RPC aliases `bsc-testnet`, `bsc_testnet`, and `opbnb_testnet`, and Etherscan API V2 verify entries for chain ids 97 and 5611. |
 | `script/DeployBnb.s.sol` | No. | Deploys `MockUSDC` and `CommitmentEscrow` on chain id 97 (or opBNB 5611, or local Anvil) and grants `VERIFIER_ROLE`. Refuses every other chain, including BNB Smart Chain mainnet. |
+| `DeployBscTestnet` in `script/Deploy.s.sol` | No. The file held the Fuji deploy only. | The Fuji and BSC deploys now share one body. `DeployBscTestnet` deploys the same two contracts on chain id 97 and needs an explicit treasury. Each entry point refuses every chain except its own testnet and local Anvil. |
+| `script/anvil-e2e.sh` | Yes, for the Fuji entry point. | Also rehearses `DeployBscTestnet`, on a local chain id 97 as well, checks that chain id 56 is refused, and runs in CI after `forge test`. |
+| [SUBMISSION.md](../SUBMISSION.md) | No. | HackQuest paste sheet for the Developer Track. |
 | This document | No. | Hackathon architecture, faucet, deploy, and judging notes. |
 
 The new artifact is the BNB Chain deploy path and, once funded, the testnet contracts. The commitment rules and the photo-proof agent are existing product work.
@@ -83,18 +86,20 @@ forge script script/DeployBnb.s.sol:DeployBnb \
 
 The script checks `block.chainid` and reverts with `NotBnbTestnet` on any chain other than `97`, `5611`, and `31337`.
 
-Verify on BscScan through Etherscan API V2. `BSCSCAN_API_KEY` is a key from etherscan.io. `foundry.toml` already sets the chain id 97 URL.
+`script/Deploy.s.sol:DeployBscTestnet` is a second entry point for chain id 97. It deploys the same contracts through the code the Fuji deploy uses and needs `BSC_TREASURY_ADDRESS` set. The command is in the [README](../README.md#deploy-on-bnb-smart-chain-testnet). Use one entry point for a given deployment.
+
+Verify on BscScan through Etherscan API V2. `BSCSCAN_API_KEY` is a key from etherscan.io. `foundry.toml` already sets the chain id 97 URL. `--chain` takes Foundry's chain alias `bsc-testnet` or the id `97`. The underscore name `bsc_testnet` is an RPC alias only. If the treasury was left to default, set `BSC_TREASURY_ADDRESS` to the logged `treasury` address before verifying, because that address is a constructor argument.
 
 ```sh
 forge verify-contract \
-  --chain bsc_testnet \
+  --chain bsc-testnet \
   --watch \
   --constructor-args "$(cast abi-encode "constructor(address,address,address)" "$BSC_USDC_ADDRESS" "$BSC_TREASURY_ADDRESS" "$BSC_ADMIN_ADDRESS")" \
   "$BSC_ESCROW_ADDRESS" \
   src/CommitmentEscrow.sol:CommitmentEscrow
 
 forge verify-contract \
-  --chain bsc_testnet \
+  --chain bsc-testnet \
   --watch \
   "$BSC_USDC_ADDRESS" \
   src/MockUSDC.sol:MockUSDC
@@ -163,7 +168,7 @@ The new piece relative to a plain escrow is the agent boundary. An AI reviewer i
 
 ### Open source
 
-This repository is MIT (`LICENSE`). Contracts, tests, the Fuji deploy, and this BNB deploy script are in the public git history. `forge test` is the check. Verification on BscScan publishes the same solc 0.8.24 bytecode. No key is committed. `.env` and `.local/` are gitignored.
+This repository is MIT (`LICENSE`). Contracts, tests, the Fuji deploy, and the BNB deploy scripts are in the public git history. `forge test` and `script/anvil-e2e.sh` are the checks, and both run in CI. Verification on BscScan publishes the same solc 0.8.24 bytecode. No key is committed. `.env` and `.local/` are gitignored.
 
 ### Integration
 
