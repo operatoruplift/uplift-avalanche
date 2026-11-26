@@ -98,6 +98,38 @@ Both contracts are verified.
 
 Addresses, transaction hashes, and the smoke test are in [DEPLOYMENTS.md](DEPLOYMENTS.md).
 
+## BNB Chain
+
+Same commitment escrow, aimed at BNB Smart Chain testnet for the BNB Bangkok hackathon. The Fuji contracts, `foundry.toml` Fuji endpoint, and `script/Deploy.s.sol` are unchanged. What is new for the hackathon, the photo-proof architecture, faucets, and the deployment table are in [docs/BNB_BANGKOK.md](docs/BNB_BANGKOK.md).
+
+BSC testnet is chain id `97`. RPC `https://bsc-testnet-dataseed.bnbchain.org`. Explorer `https://testnet.bscscan.com`. opBNB testnet (chain id `5611`, RPC `https://opbnb-testnet-rpc.bnbchain.org`) is configured as an optional second network. The deploy target is BSC testnet.
+
+`script/DeployBnb.s.sol` reads `BSC_VERIFIER_ADDRESS` and, when set, `BSC_DEPLOYER_PRIVATE_KEY` and `BSC_TREASURY_ADDRESS`. An empty treasury uses the deployer. The script deploys `MockUSDC` and `CommitmentEscrow`, then grants `VERIFIER_ROLE`. `MockUSDC` is still a public-mint test token. The script reverts unless the chain id is `97`, `5611`, or local Anvil `31337`.
+
+```sh
+forge script script/DeployBnb.s.sol:DeployBnb \
+  --rpc-url bsc_testnet \
+  --broadcast \
+  --slow
+```
+
+```sh
+forge verify-contract \
+  --chain bsc_testnet \
+  --constructor-args "$(cast abi-encode "constructor(address,address,address)" "$BSC_USDC_ADDRESS" "$BSC_TREASURY_ADDRESS" "$BSC_ADMIN_ADDRESS")" \
+  "$BSC_ESCROW_ADDRESS" \
+  src/CommitmentEscrow.sol:CommitmentEscrow
+
+forge verify-contract \
+  --chain bsc_testnet \
+  "$BSC_USDC_ADDRESS" \
+  src/MockUSDC.sol:MockUSDC
+```
+
+`foundry.toml` points `bsc_testnet` and `opbnb_testnet` at Etherscan API V2 (`chainid` 97 and 5611). `BSCSCAN_API_KEY` is an Etherscan key, read from the environment at verify time.
+
+Testnet BNB for gas: [BNB Chain faucet](https://www.bnbchain.org/en/testnet-faucet), or the BNB Chain Discord (`#testnet-faucet`) and the Telegram bot `@bnbchain_official_bot`. Details are in the hackathon doc.
+
 ## Layout
 
 Git submodules, pinned in `.gitmodules`:

@@ -16,8 +16,17 @@ remappings = [
 [rpc_endpoints]
 fuji = "https://api.avax-test.network/ext/bc/C/rpc"
 anvil = "http://127.0.0.1:8545"
+# BNB Smart Chain testnet. Chain id 97. Explorer: https://testnet.bscscan.com
+bsc_testnet = "https://bsc-testnet-dataseed.bnbchain.org"
+# opBNB testnet. Chain id 5611. Explorer: https://opbnb-testnet.bscscan.com
+# Optional second network. The hackathon deployment target is bsc_testnet.
+opbnb_testnet = "https://opbnb-testnet-rpc.bnbchain.org"
 
 # Routescan serves the Snowtrace Fuji verifier. The key is read from the
 # environment at verify time. Do not put a real key in this file.
+# BSC and opBNB use Etherscan API V2. One etherscan.io key covers BscScan.
+# BSCSCAN_API_KEY is read from the environment. Do not put a real key here.
 [etherscan]
 fuji = { key = "${SNOWTRACE_API_KEY}", url = "https://api.routescan.io/v2/network/testnet/evm/43113/etherscan/api", chain = 43113 }
+bsc_testnet = { key = "${BSCSCAN_API_KEY}", url = "https://api.etherscan.io/v2/api?chainid=97", chain = 97 }
+opbnb_testnet = { key = "${BSCSCAN_API_KEY}", url = "https://api.etherscan.io/v2/api?chainid=5611", chain = 5611 }
