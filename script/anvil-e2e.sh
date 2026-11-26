@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Local Anvil rehearsal. Does not deploy to Fuji and does not use a private key.
+# Local Anvil rehearsal for both deploy entry points.
+# Does not broadcast to BNB Smart Chain or Fuji and does not use a private key.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -14,79 +15,163 @@ PORT="${ANVIL_PORT:-8545}"
 RPC="http://127.0.0.1:${PORT}"
 DEPLOYER=0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
 VERIFIER=0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC
+TREASURY=0x70997970C51812dc3A010C7d01b50e0d17dc79C8
 DEPOSIT=1000000
 
-anvil --port "$PORT" --silent &
-ANVIL_PID=$!
+# Chain 97 is also the real BSC testnet id. Keep rehearsal receipts out of
+# broadcast/ so they cannot be mistaken for a BscScan deployment.
+SCRATCH="$(mktemp -d)"
+export FOUNDRY_BROADCAST="${SCRATCH}/broadcast"
+export FOUNDRY_CACHE_PATH="${SCRATCH}/cache"
+
+PIDS=()
 cleanup() {
-  kill "$ANVIL_PID" >/dev/null 2>&1 || true
+  for pid in "${PIDS[@]+"${PIDS[@]}"}"; do
+    kill "$pid" >/dev/null 2>&1 || true
+  done
+  rm -rf "$SCRATCH"
 }
 trap cleanup EXIT
 
-ready=0
-for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
-  if cast chain-id --rpc-url "$RPC" >/dev/null 2>&1; then
-    ready=1
-    break
+start_anvil() {
+  local port="$1"
+  local chain_id="${2:-}"
+  if [[ -n "$chain_id" ]]; then
+    anvil --port "$port" --chain-id "$chain_id" --silent &
+  else
+    anvil --port "$port" --silent &
   fi
-  sleep 0.25
-done
-if [[ "$ready" -ne 1 ]]; then
-  echo "Anvil did not start on port ${PORT}." >&2
-  exit 1
-fi
+  PIDS+=("$!")
+  local rpc="http://127.0.0.1:${port}"
+  local ready=0
+  for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
+    if cast chain-id --rpc-url "$rpc" >/dev/null 2>&1; then
+      ready=1
+      break
+    fi
+    sleep 0.25
+  done
+  if [[ "$ready" -ne 1 ]]; then
+    echo "Anvil did not start on port ${port}." >&2
+    exit 1
+  fi
+}
 
 unset FUJI_DEPLOYER_PRIVATE_KEY
-export FUJI_TREASURY_ADDRESS=0x70997970C51812dc3A010C7d01b50e0d17dc79C8
-export FUJI_VERIFIER_ADDRESS="$VERIFIER"
+unset BSC_DEPLOYER_PRIVATE_KEY
 
 cd "$ROOT"
-LOG="$(forge script script/Deploy.s.sol:DeployFuji \
-  --rpc-url "$RPC" \
-  --broadcast \
-  --unlocked \
-  --sender "$DEPLOYER")"
-printf '%s\n' "$LOG"
 
-USDC="$(printf '%s\n' "$LOG" | awk '$1=="MockUSDC" && $2 ~ /^0x[0-9a-fA-F]{40}$/ {addr=$2} END {print addr}')"
-ESCROW="$(printf '%s\n' "$LOG" | awk '$1=="CommitmentEscrow" && $2 ~ /^0x[0-9a-fA-F]{40}$/ {addr=$2} END {print addr}')"
-if [[ -z "$USDC" || -z "$ESCROW" ]]; then
-  echo "Deploy logs did not include MockUSDC and CommitmentEscrow addresses." >&2
-  exit 1
-fi
+# Deposit, record, settle, and claim against one unlocked deploy.
+rehearse() {
+  local contract="$1"
+  local prefix="$2"
+  local rpc="$3"
+  unset FUJI_TREASURY_ADDRESS FUJI_VERIFIER_ADDRESS
+  unset BSC_TREASURY_ADDRESS BSC_VERIFIER_ADDRESS
+  export "${prefix}_TREASURY_ADDRESS=${TREASURY}"
+  export "${prefix}_VERIFIER_ADDRESS=${VERIFIER}"
 
-NOW="$(cast block latest --rpc-url "$RPC" -f timestamp)"
-DEADLINE=$((NOW + 180))
-GOAL="$(cast keccak "anvil-commitment-deposit")"
-VERDICT="$(cast keccak "anvil-proof-passed")"
+  local log
+  log="$(forge script "script/Deploy.s.sol:${contract}" \
+    --rpc-url "$rpc" \
+    --broadcast \
+    --unlocked \
+    --sender "$DEPLOYER")"
+  printf '%s\n' "$log"
 
-cast send "$USDC" "mint(address,uint256)" "$DEPLOYER" "$DEPOSIT" \
-  --unlocked --from "$DEPLOYER" --rpc-url "$RPC" >/dev/null
-cast send "$USDC" "approve(address,uint256)" "$ESCROW" "$DEPOSIT" \
-  --unlocked --from "$DEPLOYER" --rpc-url "$RPC" >/dev/null
-cast send "$ESCROW" "openPool(bytes32,uint64,uint32)" "$GOAL" "$DEADLINE" 1 \
-  --unlocked --from "$DEPLOYER" --rpc-url "$RPC" >/dev/null
-cast send "$ESCROW" "createCommitment(bytes32,uint256,uint64)" "$GOAL" "$DEPOSIT" "$DEADLINE" \
-  --unlocked --from "$DEPLOYER" --rpc-url "$RPC" >/dev/null
-cast send "$ESCROW" "recordProof(bytes32,address,uint32,bytes32,bool)" "$GOAL" "$DEPLOYER" 0 "$VERDICT" true \
-  --unlocked --from "$VERIFIER" --rpc-url "$RPC" >/dev/null
+  local usdc escrow
+  usdc="$(printf '%s\n' "$log" | awk '$1=="MockUSDC" && $2 ~ /^0x[0-9a-fA-F]{40}$/ {addr=$2} END {print addr}')"
+  escrow="$(printf '%s\n' "$log" | awk '$1=="CommitmentEscrow" && $2 ~ /^0x[0-9a-fA-F]{40}$/ {addr=$2} END {print addr}')"
+  if [[ -z "$usdc" || -z "$escrow" ]]; then
+    echo "Deploy logs did not include MockUSDC and CommitmentEscrow addresses." >&2
+    exit 1
+  fi
 
-cast rpc evm_increaseTime 181 --rpc-url "$RPC" >/dev/null
-cast rpc evm_mine --rpc-url "$RPC" >/dev/null
+  local now deadline goal verdict
+  now="$(cast block latest --rpc-url "$rpc" -f timestamp)"
+  deadline=$((now + 180))
+  goal="$(cast keccak "anvil-commitment-deposit-${contract}")"
+  verdict="$(cast keccak "anvil-proof-passed-${contract}")"
 
-cast send "$ESCROW" "settle(bytes32)" "$GOAL" \
-  --unlocked --from "$DEPLOYER" --rpc-url "$RPC" >/dev/null
-cast send "$ESCROW" "claim(bytes32)" "$GOAL" \
-  --unlocked --from "$DEPLOYER" --rpc-url "$RPC" >/dev/null
+  cast send "$usdc" "mint(address,uint256)" "$DEPLOYER" "$DEPOSIT" \
+    --unlocked --from "$DEPLOYER" --rpc-url "$rpc" >/dev/null
+  cast send "$usdc" "approve(address,uint256)" "$escrow" "$DEPOSIT" \
+    --unlocked --from "$DEPLOYER" --rpc-url "$rpc" >/dev/null
+  cast send "$escrow" "openPool(bytes32,uint64,uint32)" "$goal" "$deadline" 1 \
+    --unlocked --from "$DEPLOYER" --rpc-url "$rpc" >/dev/null
+  cast send "$escrow" "createCommitment(bytes32,uint256,uint64)" "$goal" "$DEPOSIT" "$deadline" \
+    --unlocked --from "$DEPLOYER" --rpc-url "$rpc" >/dev/null
+  cast send "$escrow" "recordProof(bytes32,address,uint32,bytes32,bool)" "$goal" "$DEPLOYER" 0 "$verdict" true \
+    --unlocked --from "$VERIFIER" --rpc-url "$rpc" >/dev/null
 
-BALANCE_RAW="$(cast call "$USDC" "balanceOf(address)(uint256)" "$DEPLOYER" --rpc-url "$RPC")"
-ESCROW_RAW="$(cast call "$USDC" "balanceOf(address)(uint256)" "$ESCROW" --rpc-url "$RPC")"
-# cast prints `1000000 [1e6]`. Compare the integer token only.
-BALANCE="${BALANCE_RAW%% *}"
-ESCROW_BALANCE="${ESCROW_RAW%% *}"
-if [[ "$BALANCE" != "$DEPOSIT" || "$ESCROW_BALANCE" != "0" ]]; then
-  echo "Balance check failed. deployer=${BALANCE} escrow=${ESCROW_BALANCE}" >&2
-  exit 1
-fi
+  cast rpc evm_increaseTime 181 --rpc-url "$rpc" >/dev/null
+  cast rpc evm_mine --rpc-url "$rpc" >/dev/null
 
-echo "Anvil flow ok. MockUSDC ${USDC} CommitmentEscrow ${ESCROW} refund ${BALANCE}"
+  cast send "$escrow" "settle(bytes32)" "$goal" \
+    --unlocked --from "$DEPLOYER" --rpc-url "$rpc" >/dev/null
+  cast send "$escrow" "claim(bytes32)" "$goal" \
+    --unlocked --from "$DEPLOYER" --rpc-url "$rpc" >/dev/null
+
+  local balance_raw escrow_raw balance escrow_balance
+  balance_raw="$(cast call "$usdc" "balanceOf(address)(uint256)" "$DEPLOYER" --rpc-url "$rpc")"
+  escrow_raw="$(cast call "$usdc" "balanceOf(address)(uint256)" "$escrow" --rpc-url "$rpc")"
+  # cast prints `1000000 [1e6]`. Compare the integer token only.
+  balance="${balance_raw%% *}"
+  escrow_balance="${escrow_raw%% *}"
+  if [[ "$balance" != "$DEPOSIT" || "$escrow_balance" != "0" ]]; then
+    echo "Balance check failed for ${contract}. deployer=${balance} escrow=${escrow_balance}" >&2
+    exit 1
+  fi
+
+  echo "Anvil flow ok. ${contract} MockUSDC ${usdc} CommitmentEscrow ${escrow} refund ${balance}"
+}
+
+# Deploy entry point must revert on the wrong chain. A compile or RPC failure
+# is not treated as a successful refusal.
+expect_refuse() {
+  local contract="$1"
+  local prefix="$2"
+  local rpc="$3"
+  unset FUJI_TREASURY_ADDRESS FUJI_VERIFIER_ADDRESS
+  unset BSC_TREASURY_ADDRESS BSC_VERIFIER_ADDRESS
+  export "${prefix}_TREASURY_ADDRESS=${TREASURY}"
+  export "${prefix}_VERIFIER_ADDRESS=${VERIFIER}"
+
+  local log status
+  set +e
+  log="$(forge script "script/Deploy.s.sol:${contract}" \
+    --rpc-url "$rpc" \
+    --broadcast \
+    --unlocked \
+    --sender "$DEPLOYER" 2>&1)"
+  status=$?
+  set -e
+  if [[ "$status" -eq 0 ]]; then
+    echo "Expected ${contract} to refuse ${rpc}." >&2
+    printf '%s\n' "$log" >&2
+    exit 1
+  fi
+  if [[ "$log" != *"refusing chain"* && "$log" != *"WrongChain"* ]]; then
+    echo "Expected ${contract} to revert with WrongChain on ${rpc}." >&2
+    printf '%s\n' "$log" >&2
+    exit 1
+  fi
+  echo "Chain guard ok. ${contract} refused ${rpc}."
+}
+
+start_anvil "$PORT"
+rehearse DeployFuji FUJI "$RPC"
+rehearse DeployBscTestnet BSC "$RPC"
+
+# Chain 97 is the BSC testnet target. Chain 56 is BNB Smart Chain mainnet and
+# must be refused, as must pointing the Fuji entry point at chain 97.
+BSC_PORT="${ANVIL_BSC_PORT:-18545}"
+MAINNET_PORT="${ANVIL_BSC_MAINNET_PORT:-18546}"
+start_anvil "$BSC_PORT" 97
+start_anvil "$MAINNET_PORT" 56
+rehearse DeployBscTestnet BSC "http://127.0.0.1:${BSC_PORT}"
+expect_refuse DeployBscTestnet BSC "http://127.0.0.1:${MAINNET_PORT}"
+expect_refuse DeployFuji FUJI "http://127.0.0.1:${BSC_PORT}"
+
+echo "Anvil flow ok. Fuji and BSC testnet entry points settled, and the chain guard refused mainnet."
