@@ -75,14 +75,16 @@ Requires a deployer funded with tBNB. This repository does not contain a key. Co
 export BSC_VERIFIER_ADDRESS=0xYourVerifier
 export BSC_TREASURY_ADDRESS=0xYourTreasury   # optional; defaults to the deployer
 export BSC_DEPLOYER_PRIVATE_KEY=0xYourDeployerKey
+export BSC_DEPLOYER_ADDRESS=0xYourDeployerAddress
 
 forge script script/DeployBnb.s.sol:DeployBnb \
-  --rpc-url bsc_testnet \
+  --rpc-url bsc-testnet \
   --broadcast \
+  --sender $BSC_DEPLOYER_ADDRESS \
   --slow
 ```
 
-`--rpc-url bsc_testnet` uses `https://bsc-testnet-dataseed.bnbchain.org` from `foundry.toml`. You can pass `$BSC_RPC_URL` instead. The script reads `BSC_DEPLOYER_PRIVATE_KEY` itself. Leave that variable unset only for a local Anvil run with `--unlocked --sender`.
+`--rpc-url bsc-testnet` uses `https://bsc-testnet-rpc.publicnode.com` from `foundry.toml`. `BSC_DEPLOYER_ADDRESS` is the address of the deployer key. You can pass `$BSC_RPC_URL` instead. If publicnode is down, the fallback is `https://data-seed-prebsc-1-s1.bnbchain.org:8545`. Some networks fail TLS to that dataseed host. `bsc_testnet` is a second alias, `https://bsc-testnet-dataseed.bnbchain.org`. The script reads `BSC_DEPLOYER_PRIVATE_KEY` itself. Leave that variable unset only for a local Anvil run with `--unlocked --sender`.
 
 The script checks `block.chainid` and reverts with `NotBnbTestnet` on any chain other than `97`, `5611`, and `31337`.
 

@@ -26,10 +26,12 @@ The live walkthrough is [binance.operatoruplift.com](https://binance.operatorupl
 | Field | Value |
 | --- | --- |
 | Network | BNB Smart Chain Testnet |
-| RPC | `https://data-seed-prebsc-1-s1.bnbchain.org:8545` |
+| RPC | `https://bsc-testnet-rpc.publicnode.com` |
 | Chain id | `97` |
 | Symbol | tBNB |
 | Explorer | https://testnet.bscscan.com |
+
+If publicnode does not answer, the fallback RPC is `https://data-seed-prebsc-1-s1.bnbchain.org:8545`. Some networks fail TLS to that dataseed host.
 
 3. Mint test USDC. The mint button calls public `mint` on `MockUSDC`.
 4. Open a pool, or join one by using the same goal name. The deposit is test USDC (6 decimals).
@@ -177,13 +179,17 @@ Requires a funded deployer. This repository does not create that key, and it doe
 export BSC_TREASURY_ADDRESS=0xYourTreasury
 export BSC_VERIFIER_ADDRESS=0xYourVerifier
 export BSC_DEPLOYER_PRIVATE_KEY=0xYourFundedDeployerKey
+export BSC_DEPLOYER_ADDRESS=0xYourDeployerAddress
 forge script script/Deploy.s.sol:DeployBscTestnet \
   --rpc-url bsc-testnet \
   --broadcast \
+  --sender $BSC_DEPLOYER_ADDRESS \
   --slow
 ```
 
-`bsc-testnet` is the RPC alias in `foundry.toml`: `https://data-seed-prebsc-1-s1.bnbchain.org:8545`. The same name is Foundry's chain alias for chain id 97, so verify uses `--chain bsc-testnet`. The explicit form `--rpc-url "$BSC_RPC_URL"` is the same endpoint.
+`BSC_DEPLOYER_ADDRESS` is the address of `BSC_DEPLOYER_PRIVATE_KEY`. `--sender` keeps Foundry's script sender on that account. The script still derives the escrow admin from the key with `vm.addr`, so the admin is that address even if `--sender` is omitted. When the key is unset, set `BSC_ADMIN_ADDRESS` to the deployer instead. If both are set they must be the same address.
+
+`bsc-testnet` is the RPC alias in `foundry.toml`: `https://bsc-testnet-rpc.publicnode.com`. The same name is Foundry's chain alias for chain id 97, so verify uses `--chain bsc-testnet`. The explicit form `--rpc-url "$BSC_RPC_URL"` is the same endpoint. If publicnode is down, use the dataseed fallback `https://data-seed-prebsc-1-s1.bnbchain.org:8545`. Some networks fail TLS to that host, which is why the alias uses publicnode.
 
 The script deploys `MockUSDC` and `CommitmentEscrow`, and grants `VERIFIER_ROLE` to `BSC_VERIFIER_ADDRESS`. The deployer is the admin. It reverts on any chain other than `97` and local Anvil `31337`. If a dataseed rejects a type-2 transaction, rerun the same command with `--legacy` added.
 
@@ -196,9 +202,11 @@ Copy the logged addresses into [DEPLOYMENTS.md](DEPLOYMENTS.md) and into the web
 ```sh
 export BSC_VERIFIER_ADDRESS=0xYourVerifier
 export BSC_DEPLOYER_PRIVATE_KEY=0xYourFundedDeployerKey
+export BSC_DEPLOYER_ADDRESS=0xYourDeployerAddress
 forge script script/DeployBnb.s.sol:DeployBnb \
-  --rpc-url bsc_testnet \
+  --rpc-url bsc-testnet \
   --broadcast \
+  --sender $BSC_DEPLOYER_ADDRESS \
   --slow
 ```
 
