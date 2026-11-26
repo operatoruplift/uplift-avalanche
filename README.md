@@ -159,7 +159,7 @@ Foundry downloads solc 0.8.24 on the first build. Copy `.env.example` to `.env` 
 forge test
 ```
 
-`forge test` runs 17 tests: 12 for `CommitmentEscrow`, and 5 that run `script/DeployBnb.s.sol` in-process. Those 5 cover the role grant on chain id `97`, the treasury default on opBNB testnet, the public mint, and the refusal of chain ids `56` and `43113`.
+`forge test` runs 13 tests: 12 for `CommitmentEscrow`, and 1 that runs `script/DeployBnb.s.sol` in-process through five scenarios in order. They cover the role grant on chain id `97`, the treasury default on opBNB testnet, the refusal of chain ids `56` and `43113`, and the public mint. The scenarios share one test function because the script reads the process environment, which parallel tests would overwrite for each other.
 
 `script/anvil-e2e.sh` starts Anvil, deploys with `--unlocked` (no private key), and runs the deposit, verifier record, settle, and claim flow. It does this for `DeployFuji` and `DeployBscTestnet`, then again for `DeployBscTestnet` on a local chain id `97`. It also checks that `DeployBscTestnet` refuses chain id `56` and that `DeployFuji` refuses chain id `97`.
 
