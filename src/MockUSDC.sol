@@ -5,8 +5,9 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 /// @title MockUSDC
 /// @notice Testnet-only USDC stand-in. `mint` is public on purpose so a Fuji
-///         demo can fund wallets without a faucet. Do not deploy this token
-///         on Avalanche mainnet and do not point production accounting at it.
+///         or BSC testnet demo can fund wallets without a stablecoin faucet.
+///         Do not deploy this token on Avalanche mainnet or BNB Smart Chain
+///         mainnet, and do not point production accounting at it.
 contract MockUSDC is ERC20 {
     constructor() ERC20("Test USDC", "USDC") {}
 
