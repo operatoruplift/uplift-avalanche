@@ -12,11 +12,15 @@ Operator Uplift is an accountability app with more than 2,000 users. People set 
 
 A pool has one deadline and one required number of proof days. Anyone can join until the cap of 64. A verifier writes each day's verdict hash on-chain. After the deadline, anyone can settle. Finishers claim their own deposit back plus a pro-rata share of 96 percent of the deposits from people who missed. The treasury receives 4 percent of those missed deposits. That 4 percent is the protocol revenue. If nobody finishes, each person can still claim 96 percent of their own deposit, so funds are not stuck.
 
-The demo is https://binance.operatoruplift.com. The same contracts are already verified on Avalanche Fuji. This submission uses test USDC. It does not move live funds. Contract addresses for BNB Chain testnet go in DEPLOYMENTS.md when a funded deployer broadcasts script/Deploy.s.sol:DeployBscTestnet. The command is in README.md.
+The demo is https://binance.operatoruplift.com. The same contracts are already verified on Avalanche Fuji. This submission uses test USDC. It does not move live funds. Contract addresses for BNB Chain testnet go in DEPLOYMENTS.md when a funded deployer broadcasts:
+
+forge script script/Deploy.s.sol:DeployBscTestnet --rpc-url bsc-testnet --broadcast --sender $BSC_DEPLOYER_ADDRESS --slow
+
+Setup for that command is in README.md.
 
 ## How it uses BNB Chain
 
-CommitmentEscrow and MockUSDC deploy to BNB Smart Chain testnet, chain id 97, through the public RPC https://data-seed-prebsc-1-s1.bnbchain.org:8545. Gas is test BNB. Deposits, settlement, and claims are transactions on BNB Chain. MetaMask switches to chain id 97. The photo stays off-chain. The contract stores a keccak256 verdict hash and a pass bit, written by an address that holds VERIFIER_ROLE. Source verification targets BscScan (Etherscan API v2, chain id 97), with Sourcify as the no-key fallback. The website reads NEXT_PUBLIC_BSC_ESCROW_ADDRESS and NEXT_PUBLIC_BSC_USDC_ADDRESS, plus the BSC_* server variables, using the same pattern as the existing FUJI_* names.
+CommitmentEscrow and MockUSDC deploy to BNB Smart Chain testnet, chain id 97, through the public RPC https://bsc-testnet-rpc.publicnode.com (fallback https://data-seed-prebsc-1-s1.bnbchain.org:8545). Gas is test BNB. Deposits, settlement, and claims are transactions on BNB Chain. MetaMask switches to chain id 97. The photo stays off-chain. The contract stores a keccak256 verdict hash and a pass bit, written by an address that holds VERIFIER_ROLE. Source verification targets BscScan (Etherscan API v2, chain id 97), with Sourcify as the no-key fallback. The website reads NEXT_PUBLIC_BSC_ESCROW_ADDRESS and NEXT_PUBLIC_BSC_USDC_ADDRESS, plus the BSC_* server variables, using the same pattern as the existing FUJI_* names.
 
 ## Design and usability
 
@@ -36,7 +40,7 @@ This repository is MIT licensed and public at https://github.com/operatoruplift/
 
 ## Integration
 
-The project is integrated with BNB Smart Chain testnet, chain id 97. foundry.toml names the public dataseed and the BscScan verifier. The deploy entry point is script/Deploy.s.sol:DeployBscTestnet, and it reverts on chain id 56 so the faucet token cannot be broadcast to BNB Smart Chain mainnet by that command. The demo at https://binance.operatoruplift.com reads the BSC contract addresses. An off-chain vision review calls recordProof with the verifier key. Avalanche Fuji (chain id 43113) is a second live deployment of the same contracts, already verified on Snowtrace, so the BNB Chain work is a second network rather than a one-off copy.
+The project is integrated with BNB Smart Chain testnet, chain id 97. foundry.toml names the public RPC https://bsc-testnet-rpc.publicnode.com and the BscScan verifier. The deploy entry point is script/Deploy.s.sol:DeployBscTestnet, and it reverts on chain id 56 so the faucet token cannot be broadcast to BNB Smart Chain mainnet by that command. The demo at https://binance.operatoruplift.com reads the BSC contract addresses. An off-chain vision review calls recordProof with the verifier key. Avalanche Fuji (chain id 43113) is a second live deployment of the same contracts, already verified on Snowtrace, so the BNB Chain work is a second network rather than a one-off copy.
 
 ## Roadmap
 

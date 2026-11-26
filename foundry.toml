@@ -15,9 +15,11 @@ remappings = [
 
 [rpc_endpoints]
 fuji = "https://api.avax-test.network/ext/bc/C/rpc"
-# BNB Smart Chain testnet, chain id 97. Public BNB Chain dataseed.
+# BNB Smart Chain testnet, chain id 97.
+# publicnode answers TLS from networks that reject the BNB dataseed cert.
+# Fallback: https://data-seed-prebsc-1-s1.bnbchain.org:8545
 # The hyphenated name matches Foundry's chain alias (`--chain bsc-testnet`).
-bsc-testnet = "https://data-seed-prebsc-1-s1.bnbchain.org:8545"
+bsc-testnet = "https://bsc-testnet-rpc.publicnode.com"
 anvil = "http://127.0.0.1:8545"
 
 # Keys are read from the environment at verify time. Do not put a real key

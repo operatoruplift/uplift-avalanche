@@ -8,16 +8,18 @@ Compiler for both: solc `v0.8.24+commit.e11b9ed9`, optimizer on, 200 runs.
 
 Status: pending a funded deployer key. This repository does not contain a key, and this checkout did not broadcast.
 
-RPC: `https://data-seed-prebsc-1-s1.bnbchain.org:8545`  
+RPC: `https://bsc-testnet-rpc.publicnode.com`  
+Fallback RPC: `https://data-seed-prebsc-1-s1.bnbchain.org:8545` (some networks fail TLS to this dataseed)  
 Foundry alias: `bsc-testnet`  
 Explorer: https://testnet.bscscan.com
 
-When a funded key is available, export `BSC_TREASURY_ADDRESS`, `BSC_VERIFIER_ADDRESS`, and `BSC_DEPLOYER_PRIVATE_KEY`, then run:
+When a funded key is available, export `BSC_TREASURY_ADDRESS`, `BSC_VERIFIER_ADDRESS`, `BSC_DEPLOYER_PRIVATE_KEY`, and `BSC_DEPLOYER_ADDRESS` (the address of that key), then run:
 
 ```sh
 forge script script/Deploy.s.sol:DeployBscTestnet \
   --rpc-url bsc-testnet \
   --broadcast \
+  --sender $BSC_DEPLOYER_ADDRESS \
   --slow
 ```
 
@@ -48,7 +50,7 @@ After the broadcast, set these on the website host for https://binance.operatoru
 - `NEXT_PUBLIC_BSC_ESCROW_ADDRESS`
 - `NEXT_PUBLIC_BSC_USDC_ADDRESS`
 - `NEXT_PUBLIC_BSC_CHAIN_ID=97`
-- `NEXT_PUBLIC_BSC_RPC_URL=https://data-seed-prebsc-1-s1.bnbchain.org:8545`
+- `NEXT_PUBLIC_BSC_RPC_URL=https://bsc-testnet-rpc.publicnode.com`
 - `BSC_ESCROW_ADDRESS` (same escrow address, server side)
 - `BSC_RPC_URL`
 - `BSC_VERIFIER_ADDRESS`
