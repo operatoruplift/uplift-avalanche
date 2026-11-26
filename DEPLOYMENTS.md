@@ -8,6 +8,8 @@ Compiler for both: solc `v0.8.24+commit.e11b9ed9`, optimizer on, 200 runs.
 
 Status: pending a funded deployer key. This repository does not contain a key, and this checkout did not broadcast.
 
+A testnet-only deployer and verifier were prepared for this deployment. Their addresses, and the test BNB the deployer still needs, are in the deployment table in [docs/BNB_BANGKOK.md](docs/BNB_BANGKOK.md#deployments).
+
 RPC: `https://bsc-testnet-rpc.publicnode.com`  
 Fallback RPC: `https://data-seed-prebsc-1-s1.bnbchain.org:8545` (some networks fail TLS to this dataseed)  
 Foundry alias: `bsc-testnet`  
@@ -23,7 +25,9 @@ forge script script/Deploy.s.sol:DeployBscTestnet \
   --slow
 ```
 
-The script prints `MockUSDC`, `CommitmentEscrow`, `admin`, `treasury`, and `verifier`. Record those here, commit the `broadcast/Deploy.s.sol/97/` receipts (the gitignore already keeps that directory), and verify with the commands in the README. Fill in:
+`script/DeployBnb.s.sol:DeployBnb` is the other entry point for the same deployment. It takes `--rpc-url bsc_testnet` and uses the deployer as the treasury when `BSC_TREASURY_ADDRESS` is empty. Use one of the two.
+
+Either script prints `MockUSDC`, `CommitmentEscrow`, `admin`, `treasury`, and `verifier`. Record those here, commit the receipts from `broadcast/Deploy.s.sol/97/` or `broadcast/DeployBnb.s.sol/97/` (the gitignore already keeps both directories), and verify with the commands in the README. Fill in:
 
 ### MockUSDC
 
@@ -36,13 +40,13 @@ The script prints `MockUSDC`, `CommitmentEscrow`, `admin`, `treasury`, and `veri
 
 - Address: pending
 - Deploy tx: pending
-- Constructor args: token = MockUSDC address, treasury = `BSC_TREASURY_ADDRESS`, admin = deployer
+- Constructor args: token = MockUSDC address, treasury = `BSC_TREASURY_ADDRESS` (the deployer when `DeployBnb` ran with it empty), admin = deployer
 - BscScan: pending
 - Verified: pending
 
 ### Role grant
 
-- `grantRole(VERIFIER_ROLE, BSC_VERIFIER_ADDRESS)` is in the same deploy script
+- `grantRole(VERIFIER_ROLE, BSC_VERIFIER_ADDRESS)` is in both deploy scripts
 - Tx: pending
 
 After the broadcast, set these on the website host for https://binance.operatoruplift.com:

@@ -10,6 +10,8 @@ The MIT license in `LICENSE` applies to this repository.
 
 BNB Smart Chain testnet deployment is pending a funded deployer key. The deploy and verify commands are below. No key is stored in this repository. Avalanche Fuji is already deployed and verified. Addresses and the Fuji smoke test are in [DEPLOYMENTS.md](DEPLOYMENTS.md).
 
+What is new for the BNB Bangkok hackathon, the agent boundary, the faucet routes, and the deployer and verifier addresses prepared for the BSC testnet deploy are in [docs/BNB_BANGKOK.md](docs/BNB_BANGKOK.md). The HackQuest paste sheet is [SUBMISSION.md](SUBMISSION.md).
+
 ## Problem
 
 People set a goal, miss a few days, and the goal disappears into a notes app. A shared pool makes the follow-through concrete. Everyone deposits the same kind of token, under the same deadline, with the same number of proof days. The rule is on-chain, so nobody in the pool gets a private exception.
@@ -44,7 +46,7 @@ This repository is the Foundry escrow. The browser app is the Operator Uplift we
 MetaMask (ethers v6)
   openPool, createCommitment, settle, claim
         |
-        +--> POST /api/uplift/bsc/proof
+        +--> POST /api/uplift/bnb/proof
                wallet signature over goal, day, challenge, photo
                vision review
                keccak256 of the canonical verdict JSON
@@ -76,8 +78,6 @@ The server records a proof only when the deployment has the variables below. Nam
 `BSC_VERIFIER_PRIVATE_KEY` must be the key for the address granted `VERIFIER_ROLE` at deploy time. A new key is created with `cast wallet new`. Keep the printed key in the host's secret store, not in git. Fund that address with test BNB so it can send `recordProof`.
 
 Without the vision key, the proof route returns `enabled: false` and records nothing. Without Upstash, the review abstains. Without `BSC_VERIFIER_PRIVATE_KEY`, a passed review returns `verifier_not_configured` and writes nothing.
-
-`BSC_VERIFIER_UNLOCKED` and `BSC_LOCAL_FIXTURE` are local Anvil only, matching `FUJI_VERIFIER_UNLOCKED` and `FUJI_LOCAL_FIXTURE`. Both refuse a public RPC and a production process.
 
 ## Settlement
 
@@ -115,7 +115,7 @@ The existing Operator Uplift community is the distribution. More than 2,000 peop
 
 ## Roadmap
 
-1. Broadcast `DeployBscTestnet` with a funded deployer, verify on BscScan, and write the addresses into [DEPLOYMENTS.md](DEPLOYMENTS.md).
+1. Broadcast the BSC testnet deploy (`DeployBscTestnet` or `DeployBnb`) with a funded deployer, verify on BscScan, and write the addresses into [DEPLOYMENTS.md](DEPLOYMENTS.md).
 2. Set the `NEXT_PUBLIC_BSC_*` and `BSC_*` variables so [binance.operatoruplift.com](https://binance.operatoruplift.com) points at those contracts.
 3. Run a public testnet challenge with the existing Operator Uplift community. Keep deadlines short enough that a pool can settle during a demo.
 4. Add a second verifier address so one key is not the only writer of proofs. The contract already uses `AccessControl` for this.
@@ -133,7 +133,8 @@ Solidity `0.8.24`. Optimizer on, 200 runs.
 
 | Network | Chain id | Foundry RPC alias |
 | --- | --- | --- |
-| BNB Smart Chain testnet | `97` | `bsc-testnet` |
+| BNB Smart Chain testnet | `97` | `bsc-testnet`, or `bsc_testnet` for a second public endpoint |
+| opBNB testnet, optional | `5611` | `opbnb_testnet` |
 | Avalanche Fuji | `43113` | `fuji` |
 | Local Anvil | `31337` | `anvil` |
 
@@ -160,6 +161,8 @@ Foundry downloads solc 0.8.24 on the first build. Copy `.env.example` to `.env` 
 forge test
 ```
 
+`forge test` runs 17 tests: 12 for `CommitmentEscrow`, and 5 that run `script/DeployBnb.s.sol` in-process. Those 5 cover the role grant on chain id `97`, the treasury default on opBNB testnet, the public mint, and the refusal of chain ids `56` and `43113`.
+
 `script/anvil-e2e.sh` starts Anvil, deploys with `--unlocked` (no private key), and runs the deposit, verifier record, settle, and claim flow. It does this for `DeployFuji` and `DeployBscTestnet`, then again for `DeployBscTestnet` on a local chain id `97`. It also checks that `DeployBscTestnet` refuses chain id `56` and that `DeployFuji` refuses chain id `97`.
 
 ```sh
@@ -167,6 +170,8 @@ script/anvil-e2e.sh
 ```
 
 ## Deploy on BNB Smart Chain testnet
+
+Two entry points deploy the same two contracts on chain id `97`. `script/Deploy.s.sol:DeployBscTestnet` shares its code with the Fuji deploy and needs an explicit treasury. `script/DeployBnb.s.sol:DeployBnb` is described after it. Use one of them for a given deployment.
 
 Requires a funded deployer. This repository does not create that key, and it does not contain one. Export the variables in your shell. The script reads `BSC_DEPLOYER_PRIVATE_KEY` when it is non-empty, so the key does not need to appear in the command.
 
@@ -190,9 +195,30 @@ The script deploys `MockUSDC` and `CommitmentEscrow`, and grants `VERIFIER_ROLE`
 
 Copy the logged addresses into [DEPLOYMENTS.md](DEPLOYMENTS.md) and into the website variables in the architecture table.
 
+### `DeployBnb`: default treasury and opBNB testnet
+
+`script/DeployBnb.s.sol:DeployBnb` deploys the same `MockUSDC` and `CommitmentEscrow` and grants the same `VERIFIER_ROLE`. Two things differ. `BSC_TREASURY_ADDRESS` is optional, and an empty value makes the deployer the treasury. The script also accepts opBNB testnet (chain id `5611`). It reverts unless the chain id is `97`, `5611`, or local Anvil `31337`, so it refuses BNB Smart Chain mainnet as well.
+
+```sh
+export BSC_VERIFIER_ADDRESS=0xYourVerifier
+export BSC_DEPLOYER_PRIVATE_KEY=0xYourFundedDeployerKey
+export BSC_DEPLOYER_ADDRESS=0xYourDeployerAddress
+forge script script/DeployBnb.s.sol:DeployBnb \
+  --rpc-url bsc-testnet \
+  --broadcast \
+  --sender $BSC_DEPLOYER_ADDRESS \
+  --slow
+```
+
+`bsc_testnet` is a second RPC alias in `foundry.toml`, `https://bsc-testnet-dataseed.bnbchain.org`. It is the same network as `bsc-testnet`, through another public BNB Chain endpoint. opBNB testnet is `--rpc-url opbnb_testnet` and is not the hackathon deploy target.
+
+The faucet routes that do not ask for mainnet BNB, and the deployer and verifier addresses prepared for this deploy, are in [docs/BNB_BANGKOK.md](docs/BNB_BANGKOK.md).
+
 ## Verify on BscScan testnet
 
 `BSC_ADMIN_ADDRESS` is the deployer address printed as `admin`. `BSC_USDC_ADDRESS` is the logged `MockUSDC` address. `foundry.toml` sends chain `bsc-testnet` to Etherscan API v2 at `https://api.etherscan.io/v2/api?chainid=97`, with the key in `BSCSCAN_API_KEY`. Etherscan lists chain 97 as a paid-tier chain. Verified source should match optimizer 200 and solc 0.8.24.
+
+The commands are the same after either deploy entry point. `--chain` takes `bsc-testnet` or `97`. The underscore name `bsc_testnet` is an RPC alias only, and `--chain` rejects it. If `DeployBnb` ran with an empty `BSC_TREASURY_ADDRESS`, set `BSC_TREASURY_ADDRESS` to the logged `treasury` address first, because that address is a constructor argument. For opBNB testnet, use `--chain opbnb-testnet`.
 
 ```sh
 forge verify-contract \

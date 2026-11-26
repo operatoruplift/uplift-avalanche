@@ -16,7 +16,7 @@ The demo is https://binance.operatoruplift.com. The same contracts are already v
 
 forge script script/Deploy.s.sol:DeployBscTestnet --rpc-url bsc-testnet --broadcast --sender $BSC_DEPLOYER_ADDRESS --slow
 
-Setup for that command is in README.md.
+script/DeployBnb.s.sol:DeployBnb is the other entry point. Setup for both commands is in README.md.
 
 ## How it uses BNB Chain
 
@@ -40,7 +40,7 @@ This repository is MIT licensed and public at https://github.com/operatoruplift/
 
 ## Integration
 
-The project is integrated with BNB Smart Chain testnet, chain id 97. foundry.toml names the public RPC https://bsc-testnet-rpc.publicnode.com and the BscScan verifier. The deploy entry point is script/Deploy.s.sol:DeployBscTestnet, and it reverts on chain id 56 so the faucet token cannot be broadcast to BNB Smart Chain mainnet by that command. The demo at https://binance.operatoruplift.com reads the BSC contract addresses. An off-chain vision review calls recordProof with the verifier key. Avalanche Fuji (chain id 43113) is a second live deployment of the same contracts, already verified on Snowtrace, so the BNB Chain work is a second network rather than a one-off copy.
+The project is integrated with BNB Smart Chain testnet, chain id 97. foundry.toml names the public RPC https://bsc-testnet-rpc.publicnode.com and the BscScan verifier. The deploy entry points are script/Deploy.s.sol:DeployBscTestnet and script/DeployBnb.s.sol:DeployBnb. Both revert on chain id 56, so the faucet token cannot be broadcast to BNB Smart Chain mainnet by either command. The demo at https://binance.operatoruplift.com reads the BSC contract addresses. An off-chain vision review calls recordProof with the verifier key. Avalanche Fuji (chain id 43113) is a second live deployment of the same contracts, already verified on Snowtrace, so the BNB Chain work is a second network rather than a one-off copy.
 
 ## Roadmap
 
